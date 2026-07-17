@@ -75,19 +75,19 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "hotkeys": {
         "polish": "ctrl+alt+g",
         "translate": "ctrl+alt+v",
-        "summarize": "ctrl+alt+s",
+        "summarize": "ctrl+alt+m",
         "quit": "ctrl+alt+shift+q",
         "suppress": True,
         "macos": {
             "polish": "cmd+alt+g",
             "translate": "cmd+alt+v",
-            "summarize": "cmd+alt+s",
+            "summarize": "cmd+alt+m",
             "quit": "cmd+alt+shift+q",
         },
         "windows": {
             "polish": "ctrl+alt+g",
             "translate": "ctrl+alt+v",
-            "summarize": "ctrl+alt+s",
+            "summarize": "ctrl+alt+m",
             "quit": "ctrl+alt+shift+q",
         },
     },

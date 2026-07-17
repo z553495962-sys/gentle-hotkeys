@@ -11,14 +11,14 @@ Windows：
 
 - `Ctrl+Alt+G`：礼貌但不背锅地润色
 - `Ctrl+Alt+V`：中英互译
-- `Ctrl+Alt+S`：简化/总结，把一大段聊天记录压缩成两三句话
+- `Ctrl+Alt+M`：简化/总结，把一大段聊天记录压缩成两三句话
 - `Ctrl+Alt+Shift+Q`：退出
 
 macOS：
 
 - `Command+Option+G`：礼貌但不背锅地润色
 - `Command+Option+V`：中英互译
-- `Command+Option+S`：简化/总结，把一大段聊天记录压缩成两三句话
+- `Command+Option+M`：简化/总结，把一大段聊天记录压缩成两三句话
 - `Command+Option+Shift+Q`：退出
 
 按下热键后会有一声很短的提示音，表示工具已经接住了快捷键。OpenRouter 首次请求可能需要几秒；如果云端超时，会继续降级到免费模型或本地 Ollama。
@@ -177,13 +177,13 @@ DEEPSEEK_API_KEY
     "windows": {
       "polish": "ctrl+alt+g",
       "translate": "ctrl+alt+v",
-      "summarize": "ctrl+alt+s",
+      "summarize": "ctrl+alt+m",
       "quit": "ctrl+alt+shift+q"
     },
     "macos": {
       "polish": "cmd+alt+g",
       "translate": "cmd+alt+v",
-      "summarize": "cmd+alt+s",
+      "summarize": "cmd+alt+m",
       "quit": "cmd+alt+shift+q"
     }
   }

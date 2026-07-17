@@ -41,19 +41,19 @@
   "hotkeys": {
     "polish": "ctrl+alt+g",
     "translate": "ctrl+alt+v",
-    "summarize": "ctrl+alt+s",
+    "summarize": "ctrl+alt+m",
     "quit": "ctrl+alt+shift+q",
     "suppress": true,
     "windows": {
       "polish": "ctrl+alt+g",
       "translate": "ctrl+alt+v",
-      "summarize": "ctrl+alt+s",
+      "summarize": "ctrl+alt+m",
       "quit": "ctrl+alt+shift+q"
     },
     "macos": {
       "polish": "cmd+alt+g",
       "translate": "cmd+alt+v",
-      "summarize": "cmd+alt+s",
+      "summarize": "cmd+alt+m",
       "quit": "cmd+alt+shift+q"
     }
   },
