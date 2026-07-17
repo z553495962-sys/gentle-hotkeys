@@ -50,6 +50,20 @@ echo "== Gentle Hotkeys macOS installer =="
 
 ./setup_venv.sh
 
+if [ ! -f ".openrouter_key" ]; then
+  read -r -s -p "OpenRouter API key (optional, press Enter to skip): " openrouter_key
+  echo
+  if [ -n "${openrouter_key// }" ]; then
+    printf "%s\n" "$openrouter_key" > .openrouter_key
+    chmod 600 .openrouter_key
+    echo "Saved OpenRouter key to .openrouter_key"
+  else
+    echo "No OpenRouter key configured; Ollama fallback will be used."
+  fi
+else
+  echo "Existing .openrouter_key found; keeping it."
+fi
+
 ensure_ollama
 start_ollama_if_needed
 
@@ -71,6 +85,7 @@ echo
 echo "Installed and started."
 echo "Polish: Command+Option+G"
 echo "Translate: Command+Option+V"
+echo "Summarize: Command+Option+S"
 echo "Quit: Command+Option+Shift+Q"
 echo
 echo "macOS may ask for Accessibility permission."
