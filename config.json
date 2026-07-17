@@ -26,6 +26,13 @@
     "max_tokens": 700,
     "thinking": "disabled"
   },
+  "sampling": {
+    "polish_temperature": 0.22,
+    "translate_temperature": 0.05,
+    "summarize_temperature": 0.18,
+    "temperature": 0.2,
+    "top_p": null
+  },
   "ollama": {
     "url": "http://localhost:11434/api/chat",
     "model": "qwen2.5:3b",
@@ -33,9 +40,7 @@
     "timeout_seconds": 45,
     "options": {
       "num_ctx": 2048,
-      "num_predict": 512,
-      "temperature": 0.35,
-      "top_p": 0.9
+      "num_predict": 512
     }
   },
   "hotkeys": {

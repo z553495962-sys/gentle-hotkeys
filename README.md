@@ -3,7 +3,7 @@
 选中文本后按快捷键，把原文替换成润色版、译文或简短总结。  
 云端 provider 可以在安装时选择：OpenRouter Qwen、DeepSeek 官方，或者只用本地 Ollama。
 
-Gentle Hotkeys is a small hotkey tool for polishing blunt messages, translating Chinese/English text, and summarizing long chat logs with OpenRouter and Ollama fallback.
+Gentle Hotkeys is a small hotkey tool for polishing blunt messages, translating Chinese/English text, and summarizing long chat logs with OpenRouter, DeepSeek official, and Ollama fallback.
 
 ## 快捷键
 
@@ -21,7 +21,7 @@ macOS：
 - `Command+Option+M`：简化/总结，把一大段聊天记录压缩成两三句话
 - `Command+Option+Shift+Q`：退出
 
-按下热键后会有一声很短的提示音，表示工具已经接住了快捷键。OpenRouter 首次请求可能需要几秒；如果云端超时，会继续降级到免费模型或本地 Ollama。
+按下热键后会有一声很短的提示音，表示工具已经接住了快捷键。云端首次请求可能需要几秒；如果云端超时，会继续降级到下一级模型或本地 Ollama。
 
 ## 一键安装
 
@@ -146,6 +146,22 @@ DEEPSEEK_API_KEY
 ```
 
 安装脚本会按 provider 提示输入对应 key，并保存到本地私密文件。不配置 key 时会跳过云端，直接使用本地 Ollama。
+
+改采样参数：
+
+```json
+{
+  "sampling": {
+    "polish_temperature": 0.22,
+    "translate_temperature": 0.05,
+    "summarize_temperature": 0.18,
+    "temperature": 0.2,
+    "top_p": null
+  }
+}
+```
+
+`sampling` 同时作用于 OpenRouter、DeepSeek 官方和 Ollama。默认只调 `temperature`，`top_p: null` 表示不发送 `top_p`；如果你确实想固定 nucleus sampling，可以改成例如 `"top_p": 0.85`。
 
 换模型：
 

@@ -60,6 +60,13 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "max_tokens": 700,
         "thinking": "disabled",
     },
+    "sampling": {
+        "polish_temperature": 0.22,
+        "translate_temperature": 0.05,
+        "summarize_temperature": 0.18,
+        "temperature": 0.2,
+        "top_p": None,
+    },
     "ollama": {
         "url": "http://localhost:11434/api/chat",
         "model": "qwen2.5:3b",
@@ -68,8 +75,6 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "options": {
             "num_ctx": 2048,
             "num_predict": 512,
-            "temperature": 0.35,
-            "top_p": 0.9,
         },
     },
     "hotkeys": {
@@ -433,14 +438,12 @@ class GentleHotkeys:
 
     def call_deepseek_api(self, action: str, messages: list[dict[str, str]], model: str, api_key: str) -> str:
         cfg = self.config["deepseek"]
-        options = model_options(self.config["ollama"]["options"], action)
         payload: dict[str, Any] = {
             "model": model,
             "messages": messages,
-            "temperature": options["temperature"],
-            "top_p": options["top_p"],
             "max_tokens": int(cfg.get("max_tokens", 700)),
         }
+        payload.update(sampling_options(self.config, action))
         thinking = str(cfg.get("thinking", "disabled")).strip().lower()
         if thinking in {"enabled", "disabled"}:
             payload["thinking"] = {"type": thinking}
@@ -466,14 +469,12 @@ class GentleHotkeys:
 
     def call_openrouter_api(self, action: str, messages: list[dict[str, str]], model: str, api_key: str) -> str:
         cfg = self.config["openrouter"]
-        options = model_options(self.config["ollama"]["options"], action)
         payload = {
             "model": model,
             "messages": messages,
-            "temperature": options["temperature"],
-            "top_p": options["top_p"],
             "max_tokens": int(cfg.get("max_tokens", 700)),
         }
+        payload.update(sampling_options(self.config, action))
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -502,7 +503,6 @@ class GentleHotkeys:
 
     def call_ollama_api(self, action: str, messages: list[dict[str, str]]) -> str:
         ollama_cfg = self.config["ollama"]
-        options = model_options(ollama_cfg["options"], action)
 
         payload = {
             "model": ollama_cfg["model"],
@@ -510,7 +510,7 @@ class GentleHotkeys:
             "stream": False,
             "think": False,
             "keep_alive": ollama_cfg["keep_alive"],
-            "options": options,
+            "options": ollama_options(self.config, action),
         }
 
         response = requests.post(
@@ -648,21 +648,26 @@ def model_chain_label(config: dict[str, Any]) -> str:
     return f"{provider} -> Ollama {config['ollama']['model']}"
 
 
-def model_options(base_options: dict[str, Any], action: str) -> dict[str, float]:
-    options = dict(base_options)
-    temperature = float(options.get("temperature", 0.35))
-    top_p = float(options.get("top_p", 0.9))
-    if action == "translate":
-        temperature = min(temperature, 0.1)
-        top_p = min(top_p, 0.85)
-    elif action == "polish":
-        temperature = min(temperature, 0.25)
-        top_p = min(top_p, 0.85)
-    elif action == "summarize":
-        temperature = min(temperature, 0.2)
-        top_p = min(top_p, 0.85)
+def sampling_options(config: dict[str, Any], action: str) -> dict[str, float]:
+    sampling = config.get("sampling", {})
+    temperature_key = f"{action}_temperature"
+    temperature = sampling.get(temperature_key, sampling.get("temperature", 0.2))
+    result = {"temperature": float(temperature)}
 
-    return {"temperature": temperature, "top_p": top_p}
+    top_p_key = f"{action}_top_p"
+    top_p = sampling.get(top_p_key, sampling.get("top_p"))
+    if top_p not in (None, ""):
+        result["top_p"] = float(top_p)
+
+    return result
+
+
+def ollama_options(config: dict[str, Any], action: str) -> dict[str, Any]:
+    options = dict(config["ollama"].get("options", {}))
+    options.pop("temperature", None)
+    options.pop("top_p", None)
+    options.update(sampling_options(config, action))
+    return options
 
 
 def os_environ_get(name: str) -> str | None:
