@@ -5,6 +5,7 @@ __pycache__/
 *.pyd
 *.log
 .openrouter_key
+.deepseek_key
 .DS_Store
 Thumbs.db
 dist/

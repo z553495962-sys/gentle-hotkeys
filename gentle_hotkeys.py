@@ -33,6 +33,9 @@ OPENROUTER_KEY_PATH = SCRIPT_DIR / ".openrouter_key"
 
 
 DEFAULT_CONFIG: dict[str, Any] = {
+    "cloud": {
+        "provider": "openrouter-qwen",
+    },
     "openrouter": {
         "enabled": True,
         "url": "https://openrouter.ai/api/v1/chat/completions",
@@ -45,6 +48,17 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "referer": "https://github.com/z553495962-sys/gentle-hotkeys",
         "title": "Gentle Hotkeys",
         "max_tokens": 700,
+    },
+    "deepseek": {
+        "enabled": True,
+        "url": "https://api.deepseek.com/chat/completions",
+        "api_key_env": "DEEPSEEK_API_KEY",
+        "api_key_file": ".deepseek_key",
+        "api_key": "",
+        "model": "deepseek-v4-flash",
+        "timeout_seconds": 12,
+        "max_tokens": 700,
+        "thinking": "disabled",
     },
     "ollama": {
         "url": "http://localhost:11434/api/chat",
@@ -190,8 +204,8 @@ class GentleHotkeys:
             f"总结: {self.hotkeys['summarize']}  退出: {self.hotkeys['quit']}"
         )
         print(
-            f"OpenRouter: {self.config['openrouter']['primary_model']} -> "
-            f"{self.config['openrouter']['free_model']} -> Ollama {self.config['ollama']['model']}"
+            f"Provider: {cloud_provider(self.config)}  "
+            f"Chain: {model_chain_label(self.config)}"
         )
         print(f"Ollama keep_alive: {self.config['ollama']['keep_alive']}")
         self.stop_event.wait()
@@ -358,9 +372,19 @@ class GentleHotkeys:
             {"role": "user", "content": build_user_content(action, raw_text)},
         ]
 
-        openrouter_result = self.call_openrouter_chain(action, messages)
-        if openrouter_result:
-            return openrouter_result
+        provider = cloud_provider(self.config)
+        if provider == "openrouter-qwen":
+            openrouter_result = self.call_openrouter_chain(action, messages)
+            if openrouter_result:
+                return openrouter_result
+        elif provider == "deepseek-official":
+            deepseek_result = self.call_deepseek_chain(action, messages)
+            if deepseek_result:
+                return deepseek_result
+        elif provider == "ollama":
+            logging.info("Cloud provider disabled; using Ollama only.")
+        else:
+            logging.warning("Unknown cloud provider %s; using Ollama fallback.", provider)
 
         return self.call_ollama_api(action, messages)
 
@@ -388,6 +412,58 @@ class GentleHotkeys:
 
         return None
 
+    def call_deepseek_chain(self, action: str, messages: list[dict[str, str]]) -> str | None:
+        deepseek_cfg = self.config.get("deepseek", {})
+        if not deepseek_cfg.get("enabled", True):
+            return None
+
+        api_key = get_provider_api_key(deepseek_cfg, ".deepseek_key", "DEEPSEEK_API_KEY")
+        if not api_key:
+            logging.info("DeepSeek skipped because no API key is configured.")
+            return None
+
+        model = str(deepseek_cfg.get("model", "deepseek-v4-flash"))
+        try:
+            result = self.call_deepseek_api(action, messages, model, api_key)
+            logging.info("%s succeeded via deepseek-official model=%s", action, model)
+            return result
+        except Exception as exc:
+            logging.warning("%s failed via deepseek-official model=%s: %s", action, model, exc)
+            return None
+
+    def call_deepseek_api(self, action: str, messages: list[dict[str, str]], model: str, api_key: str) -> str:
+        cfg = self.config["deepseek"]
+        options = model_options(self.config["ollama"]["options"], action)
+        payload: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "temperature": options["temperature"],
+            "top_p": options["top_p"],
+            "max_tokens": int(cfg.get("max_tokens", 700)),
+        }
+        thinking = str(cfg.get("thinking", "disabled")).strip().lower()
+        if thinking in {"enabled", "disabled"}:
+            payload["thinking"] = {"type": thinking}
+
+        response = requests.post(
+            str(cfg.get("url", "https://api.deepseek.com/chat/completions")),
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            timeout=int(cfg.get("timeout_seconds", 12)),
+        )
+        if response.status_code >= 400:
+            detail = response.text[:500].replace("\n", " ")
+            raise RuntimeError(f"HTTP {response.status_code}: {detail}")
+
+        data = response.json()
+        choices = data.get("choices") or []
+        if not choices:
+            raise RuntimeError("empty choices")
+        return clean_model_output(choices[0].get("message", {}).get("content", ""))
+
     def call_openrouter_api(self, action: str, messages: list[dict[str, str]], model: str, api_key: str) -> str:
         cfg = self.config["openrouter"]
         options = model_options(self.config["ollama"]["options"], action)
@@ -405,7 +481,7 @@ class GentleHotkeys:
         if cfg.get("referer"):
             headers["HTTP-Referer"] = str(cfg["referer"])
         if cfg.get("title"):
-            headers["X-Title"] = str(cfg["title"])
+            headers["X-OpenRouter-Title"] = str(cfg["title"])
 
         response = requests.post(
             str(cfg.get("url", "https://openrouter.ai/api/v1/chat/completions")),
@@ -534,22 +610,42 @@ def build_user_content(action: str, raw_text: str) -> str:
 
 
 def get_openrouter_api_key(config: dict[str, Any]) -> str:
+    return get_provider_api_key(config, ".openrouter_key", "OPENROUTER_API_KEY")
+
+
+def get_provider_api_key(config: dict[str, Any], default_file: str, default_env: str) -> str:
     inline_key = str(config.get("api_key") or "").strip()
     if inline_key:
         return inline_key
 
-    env_name = str(config.get("api_key_env") or "OPENROUTER_API_KEY")
+    env_name = str(config.get("api_key_env") or default_env)
     env_key = str(os_environ_get(env_name) or "").strip()
     if env_key:
         return env_key
 
-    key_file = Path(str(config.get("api_key_file") or ".openrouter_key"))
+    key_file = Path(str(config.get("api_key_file") or default_file))
     if not key_file.is_absolute():
         key_file = SCRIPT_DIR / key_file
     if key_file.exists():
         return key_file.read_text(encoding="utf-8").strip()
 
     return ""
+
+
+def cloud_provider(config: dict[str, Any]) -> str:
+    return str(config.get("cloud", {}).get("provider", "openrouter-qwen")).strip().lower()
+
+
+def model_chain_label(config: dict[str, Any]) -> str:
+    provider = cloud_provider(config)
+    if provider == "openrouter-qwen":
+        openrouter = config["openrouter"]
+        return f"{openrouter['primary_model']} -> {openrouter['free_model']} -> Ollama {config['ollama']['model']}"
+    if provider == "deepseek-official":
+        return f"{config['deepseek']['model']} -> Ollama {config['ollama']['model']}"
+    if provider == "ollama":
+        return f"Ollama {config['ollama']['model']}"
+    return f"{provider} -> Ollama {config['ollama']['model']}"
 
 
 def model_options(base_options: dict[str, Any], action: str) -> dict[str, float]:

@@ -50,18 +50,72 @@ echo "== Gentle Hotkeys macOS installer =="
 
 ./setup_venv.sh
 
-if [ ! -f ".openrouter_key" ]; then
-  read -r -s -p "OpenRouter API key (optional, press Enter to skip): " openrouter_key
-  echo
-  if [ -n "${openrouter_key// }" ]; then
-    printf "%s\n" "$openrouter_key" > .openrouter_key
-    chmod 600 .openrouter_key
-    echo "Saved OpenRouter key to .openrouter_key"
+current_provider="$(
+  .venv/bin/python - <<'PY'
+import json
+with open("config.json", "r", encoding="utf-8") as f:
+    print(json.load(f).get("cloud", {}).get("provider", "openrouter-qwen"))
+PY
+)"
+
+echo
+echo "Cloud provider:"
+echo "  1 = OpenRouter Qwen3.5 Flash + OpenRouter free fallback"
+echo "  2 = DeepSeek official deepseek-v4-flash"
+echo "  3 = Ollama only"
+read -r -p "Choose provider (Enter keeps $current_provider): " provider_choice
+
+provider="$current_provider"
+if [ "$provider_choice" = "1" ]; then
+  provider="openrouter-qwen"
+elif [ "$provider_choice" = "2" ]; then
+  provider="deepseek-official"
+elif [ "$provider_choice" = "3" ]; then
+  provider="ollama"
+fi
+
+GH_PROVIDER="$provider" .venv/bin/python - <<'PY'
+import json
+import os
+p = "config.json"
+with open(p, "r", encoding="utf-8") as f:
+    data = json.load(f)
+data.setdefault("cloud", {})["provider"] = os.environ["GH_PROVIDER"]
+with open(p, "w", encoding="utf-8") as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+PY
+echo "Using provider: $provider"
+
+if [ "$provider" = "openrouter-qwen" ]; then
+  if [ ! -f ".openrouter_key" ]; then
+    read -r -s -p "OpenRouter API key (optional, press Enter to skip): " openrouter_key
+    echo
+    if [ -n "${openrouter_key// }" ]; then
+      printf "%s\n" "$openrouter_key" > .openrouter_key
+      chmod 600 .openrouter_key
+      echo "Saved OpenRouter key to .openrouter_key"
+    else
+      echo "No OpenRouter key configured; Ollama fallback will be used."
+    fi
   else
-    echo "No OpenRouter key configured; Ollama fallback will be used."
+    echo "Existing .openrouter_key found; keeping it."
+  fi
+elif [ "$provider" = "deepseek-official" ]; then
+  if [ ! -f ".deepseek_key" ]; then
+    read -r -s -p "DeepSeek API key (optional, press Enter to skip): " deepseek_key
+    echo
+    if [ -n "${deepseek_key// }" ]; then
+      printf "%s\n" "$deepseek_key" > .deepseek_key
+      chmod 600 .deepseek_key
+      echo "Saved DeepSeek key to .deepseek_key"
+    else
+      echo "No DeepSeek key configured; Ollama fallback will be used."
+    fi
+  else
+    echo "Existing .deepseek_key found; keeping it."
   fi
 else
-  echo "Existing .openrouter_key found; keeping it."
+  echo "Ollama-only mode selected."
 fi
 
 ensure_ollama

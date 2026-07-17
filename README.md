@@ -1,7 +1,7 @@
 # Gentle Hotkeys
 
 选中文本后按快捷键，把原文替换成润色版、译文或简短总结。  
-默认模型链路是 OpenRouter 主模型 -> OpenRouter 免费模型 -> 本地 Ollama。
+云端 provider 可以在安装时选择：OpenRouter Qwen、DeepSeek 官方，或者只用本地 Ollama。
 
 Gentle Hotkeys is a small hotkey tool for polishing blunt messages, translating Chinese/English text, and summarizing long chat logs with OpenRouter and Ollama fallback.
 
@@ -54,7 +54,7 @@ System Settings > Privacy & Security > Accessibility
 
 - 创建本目录专用 `.venv`
 - 安装 Python 依赖
-- 可选保存 OpenRouter API key 到本地 `.openrouter_key`
+- 可选选择云端 provider，并保存对应 API key 到本地 `.openrouter_key` 或 `.deepseek_key`
 - 检查/尝试安装 Ollama
 - 启动 Ollama 服务
 - 拉取 `qwen2.5:3b`
@@ -97,7 +97,23 @@ macOS：
 
 编辑 `config.json`。
 
-模型降级链路：
+云端 provider：
+
+```json
+{
+  "cloud": {
+    "provider": "openrouter-qwen"
+  }
+}
+```
+
+可选值：
+
+- `openrouter-qwen`：OpenRouter Qwen3.5 Flash -> OpenRouter free -> Ollama
+- `deepseek-official`：DeepSeek 官方 deepseek-v4-flash -> Ollama
+- `ollama`：只用本地 Ollama
+
+OpenRouter 配置：
 
 ```json
 {
@@ -106,31 +122,30 @@ macOS：
     "free_model": "openrouter/free",
     "timeout_seconds": 12
   },
+  "deepseek": {
+    "model": "deepseek-v4-flash"
+  },
   "ollama": {
     "model": "qwen2.5:3b"
   }
 }
 ```
 
-调用顺序：
-
-1. `qwen/qwen3.5-flash-02-23`
-2. `openrouter/free`
-3. 本地 Ollama
-
-配置 OpenRouter key：
+配置 API key：
 
 ```text
 .openrouter_key
+.deepseek_key
 ```
 
-安装脚本会提示你输入 key，并保存到这个本地文件。也可以设置环境变量：
+也可以设置环境变量：
 
 ```text
 OPENROUTER_API_KEY
+DEEPSEEK_API_KEY
 ```
 
-不配置 key 时会跳过 OpenRouter，直接使用本地 Ollama。
+安装脚本会按 provider 提示输入对应 key，并保存到本地私密文件。不配置 key 时会跳过云端，直接使用本地 Ollama。
 
 换模型：
 
@@ -182,6 +197,7 @@ OPENROUTER_API_KEY
 - 总结会把聊天记录压缩成两到三句话，优先保留结论、待办、责任人、时间点和风险。
 - 润色会先识别原文意图，催办/威胁类句子会降火成明确期限和优先级，不会乱跳成“环境排查”。
 - 含明显暴力威胁的催办句会走本地确定性改写兜底，避免小模型脑补后果或吐出标签。
+- Provider 可选 OpenRouter Qwen 或 DeepSeek 官方；云端失败会自动降级到本地 Ollama。
 - Windows 使用 `keyboard` 后端监听热键；macOS 使用 `pynput` 后端，需要辅助功能权限。
 
 ## 开机自启动

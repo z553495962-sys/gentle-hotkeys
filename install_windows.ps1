@@ -49,26 +49,74 @@ function Start-OllamaIfNeeded {
     Wait-OllamaServer
 }
 
+function Read-SecretText($prompt) {
+    $secure = Read-Host $prompt -AsSecureString
+    $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+    try {
+        return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
+    } finally {
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
+    }
+}
+
 Write-Host "== Gentle Hotkeys Windows installer =="
 
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\setup_venv.ps1"
 
-if (-not (Test-Path ".\.openrouter_key")) {
-    $openRouterKey = Read-Host "OpenRouter API key (optional, press Enter to skip)"
-    if (-not [string]::IsNullOrWhiteSpace($openRouterKey)) {
-        Set-Content -Path ".\.openrouter_key" -Value $openRouterKey.Trim() -Encoding ASCII
-        Write-Host "Saved OpenRouter key to .openrouter_key"
+$venvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
+$currentProvider = & $venvPython -c "import json; print(json.load(open('config.json', encoding='utf-8')).get('cloud', {}).get('provider', 'openrouter-qwen'))"
+Write-Host ""
+Write-Host "Cloud provider:"
+Write-Host "  1 = OpenRouter Qwen3.5 Flash + OpenRouter free fallback"
+Write-Host "  2 = DeepSeek official deepseek-v4-flash"
+Write-Host "  3 = Ollama only"
+$providerChoice = Read-Host "Choose provider (Enter keeps $currentProvider)"
+
+$provider = $currentProvider
+if ($providerChoice -eq "1") {
+    $provider = "openrouter-qwen"
+} elseif ($providerChoice -eq "2") {
+    $provider = "deepseek-official"
+} elseif ($providerChoice -eq "3") {
+    $provider = "ollama"
+}
+
+$env:GH_PROVIDER = $provider
+& $venvPython -c "import json, os; p='config.json'; d=json.load(open(p, encoding='utf-8')); d.setdefault('cloud', {})['provider']=os.environ['GH_PROVIDER']; json.dump(d, open(p, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)"
+Remove-Item Env:GH_PROVIDER
+Write-Host "Using provider: $provider"
+
+if ($provider -eq "openrouter-qwen") {
+    if (-not (Test-Path ".\.openrouter_key")) {
+        $openRouterKey = Read-SecretText "OpenRouter API key (optional, press Enter to skip)"
+        if (-not [string]::IsNullOrWhiteSpace($openRouterKey)) {
+            Set-Content -Path ".\.openrouter_key" -Value $openRouterKey.Trim() -Encoding ASCII
+            Write-Host "Saved OpenRouter key to .openrouter_key"
+        } else {
+            Write-Host "No OpenRouter key configured; Ollama fallback will be used."
+        }
     } else {
-        Write-Host "No OpenRouter key configured; Ollama fallback will be used."
+        Write-Host "Existing .openrouter_key found; keeping it."
+    }
+} elseif ($provider -eq "deepseek-official") {
+    if (-not (Test-Path ".\.deepseek_key")) {
+        $deepSeekKey = Read-SecretText "DeepSeek API key (optional, press Enter to skip)"
+        if (-not [string]::IsNullOrWhiteSpace($deepSeekKey)) {
+            Set-Content -Path ".\.deepseek_key" -Value $deepSeekKey.Trim() -Encoding ASCII
+            Write-Host "Saved DeepSeek key to .deepseek_key"
+        } else {
+            Write-Host "No DeepSeek key configured; Ollama fallback will be used."
+        }
+    } else {
+        Write-Host "Existing .deepseek_key found; keeping it."
     }
 } else {
-    Write-Host "Existing .openrouter_key found; keeping it."
+    Write-Host "Ollama-only mode selected."
 }
 
 Ensure-Ollama
 Start-OllamaIfNeeded
 
-$venvPython = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
 $model = & $venvPython -c "import json; print(json.load(open('config.json', encoding='utf-8'))['ollama']['model'])"
 Write-Host "Pulling model: $model"
 ollama pull $model
