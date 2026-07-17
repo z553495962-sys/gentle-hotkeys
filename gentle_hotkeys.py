@@ -41,7 +41,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "api_key": "",
         "primary_model": "qwen/qwen3.5-flash-02-23",
         "free_model": "openrouter/free",
-        "timeout_seconds": 45,
+        "timeout_seconds": 12,
         "referer": "https://github.com/z553495962-sys/gentle-hotkeys",
         "title": "Gentle Hotkeys",
         "max_tokens": 700,
@@ -262,10 +262,11 @@ class GentleHotkeys:
 
     def handle_action(self, action: str, hotkey: str) -> None:
         if not self.busy.acquire(blocking=False):
-            beep()
+            beep_busy()
             logging.info("Ignored %s because previous action is still running.", action)
             return
 
+        beep_started()
         worker = threading.Thread(target=self._handle_action_locked, args=(action, hotkey), daemon=True)
         worker.start()
 
@@ -479,6 +480,24 @@ def load_config() -> dict[str, Any]:
 
 
 def beep() -> None:
+    try:
+        import winsound
+
+        winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+    except Exception:
+        pass
+
+
+def beep_started() -> None:
+    try:
+        import winsound
+
+        winsound.Beep(880, 80)
+    except Exception:
+        pass
+
+
+def beep_busy() -> None:
     try:
         import winsound
 

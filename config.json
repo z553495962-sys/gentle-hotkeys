@@ -7,7 +7,7 @@
     "api_key": "",
     "primary_model": "qwen/qwen3.5-flash-02-23",
     "free_model": "openrouter/free",
-    "timeout_seconds": 45,
+    "timeout_seconds": 12,
     "referer": "https://github.com/z553495962-sys/gentle-hotkeys",
     "title": "Gentle Hotkeys",
     "max_tokens": 700

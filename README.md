@@ -21,6 +21,8 @@ macOS：
 - `Command+Option+S`：简化/总结，把一大段聊天记录压缩成两三句话
 - `Command+Option+Shift+Q`：退出
 
+按下热键后会有一声很短的提示音，表示工具已经接住了快捷键。OpenRouter 首次请求可能需要几秒；如果云端超时，会继续降级到免费模型或本地 Ollama。
+
 ## 一键安装
 
 Windows：
@@ -101,7 +103,8 @@ macOS：
 {
   "openrouter": {
     "primary_model": "qwen/qwen3.5-flash-02-23",
-    "free_model": "openrouter/free"
+    "free_model": "openrouter/free",
+    "timeout_seconds": 12
   },
   "ollama": {
     "model": "qwen2.5:3b"
